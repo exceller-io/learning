@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { sanityClient, sanityWriteClient } from "@/lib/sanity";
+import { courseByIdQuery, type SanityCourse } from "@/lib/sanity-queries";
 
 const updateSchema = z.object({
   title: z.string().min(3).optional(),
@@ -18,27 +19,12 @@ export async function GET(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   const { courseId } = await params;
-
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    include: {
-      instructor: { select: { id: true, name: true, image: true, bio: true } },
-      category: true,
-      modules: {
-        orderBy: { position: "asc" },
-        include: {
-          lessons: {
-            orderBy: { position: "asc" },
-            include: { quiz: { select: { id: true, title: true } } },
-          },
-        },
-      },
-      _count: { select: { enrollments: true } },
-    },
-  });
-
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(course);
+  return NextResponse.json({ ...course, id: course._id });
 }
 
 export async function PATCH(
@@ -49,8 +35,10 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { courseId } = await params;
-  const course = await db.course.findUnique({ where: { id: courseId } });
-
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -62,12 +50,21 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const updated = await db.course.update({
-    where: { id: courseId },
-    data: parsed.data,
-  });
+  const { categoryId, ...rest } = parsed.data;
+  const patch: Record<string, unknown> = { ...rest };
 
-  return NextResponse.json(updated);
+  if (categoryId === null) {
+    await sanityWriteClient.patch(courseId).unset(["category"]).commit();
+  } else if (categoryId) {
+    patch.category = { _type: "reference", _ref: categoryId };
+  }
+
+  const updated = await sanityWriteClient
+    .patch(courseId)
+    .set(patch)
+    .commit();
+
+  return NextResponse.json({ ...updated, id: updated._id });
 }
 
 export async function DELETE(
@@ -78,13 +75,15 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { courseId } = await params;
-  const course = await db.course.findUnique({ where: { id: courseId } });
-
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await db.course.delete({ where: { id: courseId } });
+  await sanityWriteClient.delete(courseId);
   return NextResponse.json({ success: true });
 }

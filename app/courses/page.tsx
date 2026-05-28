@@ -1,4 +1,10 @@
-import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import {
+  coursesListQuery,
+  categoriesQuery,
+  type SanityCourseListItem,
+  type SanityCategory,
+} from "@/lib/sanity-queries";
 import { Navbar } from "@/components/layout/navbar";
 import { CourseCard } from "@/components/courses/course-card";
 import { SearchInput } from "@/components/courses/search-input";
@@ -9,36 +15,33 @@ interface SearchParams {
   category?: string;
 }
 
-async function getCourses(params: SearchParams) {
-  return db.course.findMany({
-    where: {
-      isPublished: true,
-      ...(params.category && { categoryId: params.category }),
-      ...(params.search && { title: { contains: params.search } }),
-    },
-    include: {
-      instructor: { select: { name: true, image: true } },
-      category: true,
-      _count: { select: { enrollments: true, modules: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-}
-
-async function getCategories() {
-  return db.category.findMany({ orderBy: { name: "asc" } });
-}
-
 export default async function CoursesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+
   const [courses, categories] = await Promise.all([
-    getCourses(params),
-    getCategories(),
+    sanityClient.fetch<SanityCourseListItem[]>(coursesListQuery, {
+      search: params.search ?? "",
+      categoryId: params.category ?? "",
+    }),
+    sanityClient.fetch<SanityCategory[]>(categoriesQuery),
   ]);
+
+  // Normalise to the shape CourseCard expects
+  const courseCards = courses.map((c) => ({
+    id: c._id,
+    title: c.title,
+    description: c.description ?? null,
+    imageUrl: c.imageUrl ?? null,
+    price: c.price,
+    isFree: c.isFree,
+    category: c.category ? { name: c.category.name } : null,
+    instructor: { name: c.instructorName ?? null, image: null },
+    _count: { enrollments: 0, modules: c.moduleCount },
+  }));
 
   return (
     <div className="min-h-screen bg-white">
@@ -66,10 +69,10 @@ export default async function CoursesPage({
             </a>
             {categories.map((cat) => (
               <a
-                key={cat.id}
-                href={`/courses?category=${cat.id}${params.search ? `&search=${params.search}` : ""}`}
+                key={cat._id}
+                href={`/courses?category=${cat._id}${params.search ? `&search=${params.search}` : ""}`}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                  params.category === cat.id
+                  params.category === cat._id
                     ? "bg-indigo-600 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
@@ -80,7 +83,7 @@ export default async function CoursesPage({
           </div>
         </div>
 
-        {courses.length === 0 ? (
+        {courseCards.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed border-gray-200 py-24 text-center">
             <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-300" />
             <p className="font-medium text-gray-500">No courses found</p>
@@ -88,7 +91,7 @@ export default async function CoursesPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => (
+            {courseCards.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}
           </div>

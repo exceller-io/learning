@@ -1,30 +1,41 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import { allCoursesAdminQuery, courseCountQuery } from "@/lib/sanity-queries";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { Users, BookOpen, GraduationCap, TrendingUp } from "lucide-react";
+import { logger } from "@/lib/logger";
+
+type AdminCourse = {
+  _id: string;
+  _createdAt: string;
+  title: string;
+  isPublished: boolean;
+  isFree: boolean;
+  price: number;
+  instructorName?: string;
+  category?: { name: string } | null;
+};
 
 export default async function AdminDashboard() {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") redirect("/");
+  if (!session || session.user.role !== "ADMIN") {
+    logger.info("Must be an administrator to access admin dashboard.");
+    redirect("/");
+  }
 
-  const [userCount, courseCount, enrollmentCount, recentUsers, recentCourses] = await Promise.all([
-    db.user.count(),
-    db.course.count(),
-    db.enrollment.count({ where: { status: "ACTIVE" } }),
-    db.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-    db.course.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: {
-        instructor: { select: { name: true } },
-        _count: { select: { enrollments: true } },
-      },
-    }),
-  ]);
+  const [userCount, courseCount, enrollmentCount, recentUsers, recentCourses] =
+    await Promise.all([
+      db.user.count(),
+      sanityClient.fetch<number>(courseCountQuery),
+      db.enrollment.count({ where: { status: "ACTIVE" } }),
+      db.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+      sanityClient.fetch<AdminCourse[]>(allCoursesAdminQuery),
+    ]);
 
   return (
     <div>
@@ -92,10 +103,10 @@ export default async function AdminDashboard() {
           </div>
           <ul className="space-y-3">
             {recentCourses.map((course) => (
-              <li key={course.id} className="flex items-center justify-between text-sm">
+              <li key={course._id} className="flex items-center justify-between text-sm">
                 <div>
                   <p className="font-medium text-gray-800 line-clamp-1">{course.title}</p>
-                  <p className="text-xs text-gray-400">by {course.instructor.name}</p>
+                  <p className="text-xs text-gray-400">by {course.instructorName ?? "Unknown"}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={course.isPublished ? "success" : "secondary"}>

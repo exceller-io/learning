@@ -4,7 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  
 }
 
 enum Role {
@@ -35,7 +36,6 @@ model User {
   accounts       Account[]
   sessions       Session[]
   enrollments    Enrollment[]
-  courses        Course[]
   lessonProgress LessonProgress[]
   quizAttempts   QuizAttempt[]
 }
@@ -76,123 +76,54 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Category {
-  id      String   @id @default(cuid())
-  name    String   @unique
-  courses Course[]
+// Links a Sanity course _id to its Stripe product/price IDs.
+model CourseStripe {
+  id                String   @id @default(cuid())
+  sanityCourseId    String   @unique
+  stripePriceId     String?
+  stripeProductId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
-model Course {
-  id              String   @id @default(cuid())
-  title           String
-  description     String?
-  imageUrl        String?
-  price           Float    @default(0)
-  isFree          Boolean  @default(false)
-  isPublished     Boolean  @default(false)
-  stripePriceId   String?
-  stripeProductId String?
-  categoryId      String?
-  instructorId    String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  instructor  User         @relation(fields: [instructorId], references: [id])
-  category    Category?    @relation(fields: [categoryId], references: [id])
-  modules     Module[]
-  enrollments Enrollment[]
-}
-
-model Module {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  position    Int      @default(0)
-  courseId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons Lesson[]
-}
-
-model Lesson {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  content     String?
-  videoUrl    String?
-  position    Int      @default(0)
-  isFree      Boolean  @default(false)
-  moduleId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress LessonProgress[]
-  quiz     Quiz?
-}
-
-model LessonProgress {
-  id          String   @id @default(cuid())
-  userId      String
-  lessonId    String
-  isCompleted Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, lessonId])
-}
-
+// sanityId references the Sanity course document _id.
 model Enrollment {
   id                    String           @id @default(cuid())
   userId                String
-  courseId              String
+  sanityCourseId        String
   status                EnrollmentStatus @default(PENDING)
   stripeSessionId       String?
   stripePaymentIntentId String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, courseId])
+  @@unique([userId, sanityCourseId])
 }
 
-model Quiz {
-  id        String   @id @default(cuid())
-  lessonId  String   @unique
-  title     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  lesson    Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  questions Question[]
-  attempts  QuizAttempt[]
-}
-
-model Question {
-  id            String @id @default(cuid())
-  quizId        String
-  text          String
-  options       String // JSON array of strings
-  correctAnswer String
-
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-}
-
-model QuizAttempt {
-  id        String   @id @default(cuid())
-  userId    String
-  quizId    String
-  score     Float
-  answers   String   // JSON object: { questionId: selectedAnswer }
-  createdAt DateTime @default(now())
+// lessonSanityId references the lesson _key in the Sanity course document.
+model LessonProgress {
+  id             String   @id @default(cuid())
+  userId         String
+  lessonSanityId String
+  isCompleted    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonSanityId])
+}
+
+// quizSanityId = the lesson _key whose quiz was attempted (1 quiz per lesson).
+model QuizAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  quizSanityId String
+  score        Float
+  answers      String   // JSON: { [questionKey]: selectedAnswer }
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

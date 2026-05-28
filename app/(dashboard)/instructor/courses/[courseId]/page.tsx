@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import { courseByIdQuery, categoriesQuery, type SanityCourse, type SanityCategory } from "@/lib/sanity-queries";
 import { CourseEditForm } from "@/components/instructor/course-edit-form";
 import { ModuleManager } from "@/components/instructor/module-manager";
 import { Badge } from "@/components/ui/badge";
@@ -18,19 +19,8 @@ export default async function InstructorCourseEditPage({
   const { courseId } = await params;
 
   const [course, categories] = await Promise.all([
-    db.course.findUnique({
-      where: { id: courseId },
-      include: {
-        modules: {
-          orderBy: { position: "asc" },
-          include: {
-            lessons: { orderBy: { position: "asc" } },
-          },
-        },
-        category: true,
-      },
-    }),
-    db.category.findMany({ orderBy: { name: "asc" } }),
+    sanityClient.fetch<SanityCourse | null>(courseByIdQuery, { id: courseId }),
+    sanityClient.fetch<SanityCategory[]>(categoriesQuery),
   ]);
 
   if (!course) notFound();
@@ -41,12 +31,40 @@ export default async function InstructorCourseEditPage({
   const completionFields = [
     course.title,
     course.description,
-    course.categoryId,
-    course.modules.length > 0,
+    course.category?._id,
+    (course.modules ?? []).length > 0,
   ];
   const completionPct = Math.round(
     (completionFields.filter(Boolean).length / completionFields.length) * 100
   );
+
+  // Normalise for CourseEditForm (expects id, categoryId, etc.)
+  const courseForForm = {
+    id: course._id,
+    title: course.title,
+    description: course.description ?? null,
+    price: course.price,
+    isFree: course.isFree,
+    isPublished: course.isPublished,
+    categoryId: course.category?._id ?? null,
+    imageUrl: course.imageUrl ?? null,
+  };
+
+  // Normalise modules for ModuleManager (expects id on modules and lessons)
+  const modulesForManager = (course.modules ?? []).map((m) => ({
+    id: m._key,
+    title: m.title,
+    position: m.position,
+    lessons: (m.lessons ?? []).map((l) => ({
+      id: l._key,
+      title: l.title,
+      isFree: l.isFree,
+      position: l.position,
+    })),
+  }));
+
+  // Normalise categories to { id, name }
+  const categoriesForForm = categories.map((c) => ({ id: c._id, name: c.name }));
 
   return (
     <div>
@@ -74,8 +92,8 @@ export default async function InstructorCourseEditPage({
       <h1 className="mb-8 text-2xl font-bold text-gray-900">{course.title}</h1>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <CourseEditForm course={course} categories={categories} />
-        <ModuleManager courseId={courseId} modules={course.modules} />
+        <CourseEditForm course={courseForForm} categories={categoriesForForm} />
+        <ModuleManager courseId={courseId} modules={modulesForManager} />
       </div>
     </div>
   );

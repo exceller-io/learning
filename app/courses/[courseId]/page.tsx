@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import { courseByIdQuery, type SanityCourse } from "@/lib/sanity-queries";
 import { Navbar } from "@/components/layout/navbar";
 import { EnrollButton } from "@/components/courses/enroll-button";
 import { Badge } from "@/components/ui/badge";
@@ -15,35 +17,27 @@ export default async function CourseDetailPage({
   const { courseId } = await params;
   const session = await auth();
 
-  const course = await db.course.findUnique({
-    where: { id: courseId, isPublished: true },
-    include: {
-      instructor: { select: { id: true, name: true, image: true, bio: true } },
-      category: true,
-      modules: {
-        orderBy: { position: "asc" },
-        include: {
-          lessons: {
-            orderBy: { position: "asc" },
-          },
-        },
-      },
-      _count: { select: { enrollments: true } },
-    },
-  });
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
 
-  if (!course) notFound();
+  if (!course || !course.isPublished) notFound();
 
-  const enrollment = session
-    ? await db.enrollment.findUnique({
-        where: {
-          userId_courseId: { userId: session.user.id, courseId },
-        },
-      })
-    : null;
+  const [enrollment, enrollmentCount] = await Promise.all([
+    session
+      ? db.enrollment.findUnique({
+          where: { userId_sanityId: { userId: session.user.id, sanityId: courseId } },
+        })
+      : null,
+    db.enrollment.count({ where: { sanityId: courseId, status: "ACTIVE" } }),
+  ]);
 
   const isEnrolled = enrollment?.status === "ACTIVE";
-  const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const totalLessons = (course.modules ?? []).reduce(
+    (sum, m) => sum + (m.lessons ?? []).length,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -65,21 +59,21 @@ export default async function CourseDetailPage({
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
               <span className="flex items-center gap-1.5">
                 <BookOpen className="h-4 w-4" />
-                {course.modules.length} modules · {totalLessons} lessons
+                {(course.modules ?? []).length} modules · {totalLessons} lessons
               </span>
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
-                {course._count.enrollments} students enrolled
+                {enrollmentCount} students enrolled
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
-                Updated {formatDate(course.updatedAt)}
+                Updated {formatDate(new Date(course._updatedAt))}
               </span>
             </div>
             <p className="mt-4 text-sm text-gray-400">
               Created by{" "}
               <span className="font-medium text-white">
-                {course.instructor.name || "Instructor"}
+                {course.instructorName || "Instructor"}
               </span>
             </p>
           </div>
@@ -90,20 +84,19 @@ export default async function CourseDetailPage({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           {/* Main content */}
           <div className="lg:col-span-2">
-            {/* Curriculum */}
             <h2 className="mb-6 text-2xl font-bold text-gray-900">Course curriculum</h2>
             <div className="space-y-3">
-              {course.modules.map((module) => (
-                <div key={module.id} className="rounded-xl border border-gray-200 overflow-hidden">
+              {(course.modules ?? []).map((module) => (
+                <div key={module._key} className="rounded-xl border border-gray-200 overflow-hidden">
                   <div className="flex items-center justify-between bg-gray-50 px-5 py-3.5">
                     <h3 className="font-semibold text-gray-900">{module.title}</h3>
                     <span className="text-xs text-gray-400">
-                      {module.lessons.length} lesson{module.lessons.length !== 1 ? "s" : ""}
+                      {(module.lessons ?? []).length} lesson{(module.lessons ?? []).length !== 1 ? "s" : ""}
                     </span>
                   </div>
                   <ul className="divide-y divide-gray-100">
-                    {module.lessons.map((lesson) => (
-                      <li key={lesson.id} className="flex items-center gap-3 px-5 py-3">
+                    {(module.lessons ?? []).map((lesson) => (
+                      <li key={lesson._key} className="flex items-center gap-3 px-5 py-3">
                         {lesson.isFree || isEnrolled ? (
                           <PlayCircle className="h-4 w-4 flex-shrink-0 text-indigo-500" />
                         ) : (
@@ -121,22 +114,6 @@ export default async function CourseDetailPage({
                 </div>
               ))}
             </div>
-
-            {/* Instructor */}
-            {course.instructor.bio && (
-              <div className="mt-12">
-                <h2 className="mb-4 text-2xl font-bold text-gray-900">Your instructor</h2>
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-2xl font-bold text-indigo-700">
-                    {(course.instructor.name || "I")[0]}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{course.instructor.name}</p>
-                    <p className="mt-1 text-sm text-gray-600">{course.instructor.bio}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Sidebar CTA */}
@@ -173,7 +150,7 @@ export default async function CourseDetailPage({
 
               <ul className="mt-6 space-y-2.5 text-sm text-gray-600">
                 {[
-                  `${totalLessons} lessons across ${course.modules.length} modules`,
+                  `${totalLessons} lessons across ${(course.modules ?? []).length} modules`,
                   "Lifetime access",
                   "Certificate of completion",
                   "Progress tracking",

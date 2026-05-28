@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import { courseByIdQuery, type SanityCourse, type SanityLesson } from "@/lib/sanity-queries";
 import { LessonViewer } from "@/components/courses/lesson-viewer";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Circle, Lock } from "lucide-react";
@@ -20,45 +22,62 @@ export default async function StudentCourseViewPage({
   const { lessonId: activeLessonId } = await searchParams;
 
   const enrollment = await db.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.user.id, courseId } },
+    where: { userId_sanityId: { userId: session.user.id, sanityId: courseId } },
   });
 
   if (!enrollment || enrollment.status !== "ACTIVE") {
     redirect(`/courses/${courseId}`);
   }
 
-  const course = await db.course.findUnique({
-    where: { id: courseId },
-    include: {
-      modules: {
-        orderBy: { position: "asc" },
-        include: {
-          lessons: {
-            orderBy: { position: "asc" },
-            include: {
-              quiz: { include: { questions: true } },
-              progress: { where: { userId: session.user.id } },
-            },
-          },
-        },
-      },
-    },
-  });
-
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
   if (!course) notFound();
 
-  const allLessons = course.modules.flatMap((m) => m.lessons);
-  const activeLesson =
-    (activeLessonId && allLessons.find((l) => l.id === activeLessonId)) ||
+  const allLessons = (course.modules ?? []).flatMap((m) => m.lessons ?? []);
+  const lessonKeys = allLessons.map((l) => l._key);
+
+  const progressRecords = lessonKeys.length
+    ? await db.lessonProgress.findMany({
+        where: { userId: session.user.id, lessonSanityId: { in: lessonKeys } },
+      })
+    : [];
+  const completedKeys = new Set(
+    progressRecords.filter((p) => p.isCompleted).map((p) => p.lessonSanityId)
+  );
+
+  const activeLesson: SanityLesson | undefined =
+    (activeLessonId && allLessons.find((l) => l._key === activeLessonId)) ||
     allLessons[0];
 
-  const completedCount = allLessons.filter((l) =>
-    l.progress.some((p) => p.isCompleted)
-  ).length;
+  const completedCount = lessonKeys.filter((k) => completedKeys.has(k)).length;
   const progressPct =
-    allLessons.length > 0
-      ? Math.round((completedCount / allLessons.length) * 100)
-      : 0;
+    allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
+
+  // Normalise the active lesson into the shape LessonViewer expects.
+  // id = _key, options stay as string[], quiz.id = lesson _key (1:1)
+  const normalisedLesson = activeLesson
+    ? {
+        id: activeLesson._key,
+        title: activeLesson.title,
+        description: activeLesson.description ?? null,
+        content: activeLesson.content ?? null,
+        videoUrl: activeLesson.videoUrl ?? null,
+        quiz: activeLesson.quiz
+          ? {
+              id: activeLesson._key,
+              title: activeLesson.quiz.title,
+              questions: (activeLesson.quiz.questions ?? []).map((q) => ({
+                id: q._key,
+                text: q.text,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+              })),
+            }
+          : null,
+      }
+    : null;
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden -m-8">
@@ -74,19 +93,19 @@ export default async function StudentCourseViewPage({
           </div>
         </div>
 
-        {course.modules.map((module) => (
-          <div key={module.id} className="mb-4">
+        {(course.modules ?? []).map((module) => (
+          <div key={module._key} className="mb-4">
             <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
               {module.title}
             </p>
             <ul className="space-y-0.5">
-              {module.lessons.map((lesson) => {
-                const isCompleted = lesson.progress.some((p) => p.isCompleted);
-                const isActive = lesson.id === activeLesson?.id;
+              {(module.lessons ?? []).map((lesson) => {
+                const isCompleted = completedKeys.has(lesson._key);
+                const isActive = lesson._key === activeLesson?._key;
                 return (
-                  <li key={lesson.id}>
+                  <li key={lesson._key}>
                     <Link
-                      href={`/student/courses/${courseId}?lessonId=${lesson.id}`}
+                      href={`/student/courses/${courseId}?lessonId=${lesson._key}`}
                       className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                         isActive
                           ? "bg-indigo-50 font-medium text-indigo-700"
@@ -112,11 +131,11 @@ export default async function StudentCourseViewPage({
 
       {/* Lesson content */}
       <div className="flex-1 overflow-y-auto">
-        {activeLesson ? (
+        {normalisedLesson ? (
           <LessonViewer
-            lesson={activeLesson}
+            lesson={normalisedLesson}
             courseId={courseId}
-            isCompleted={activeLesson.progress.some((p) => p.isCompleted)}
+            isCompleted={completedKeys.has(activeLesson!._key)}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-gray-400">

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const schema = z.object({
-  lessonId: z.string(),
+  lessonSanityId: z.string(),
   isCompleted: z.boolean(),
 });
 
@@ -16,12 +16,12 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-  const { lessonId, isCompleted } = parsed.data;
+  const { lessonSanityId, isCompleted } = parsed.data;
 
   const progress = await db.lessonProgress.upsert({
-    where: { userId_lessonId: { userId: session.user.id, lessonId } },
+    where: { userId_lessonSanityId: { userId: session.user.id, lessonSanityId } },
     update: { isCompleted },
-    create: { userId: session.user.id, lessonId, isCompleted },
+    create: { userId: session.user.id, lessonSanityId, isCompleted },
   });
 
   return NextResponse.json(progress);

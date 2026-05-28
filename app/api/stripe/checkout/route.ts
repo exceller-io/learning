@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
+import { sanityClient } from "@/lib/sanity";
+import { courseByIdQuery, type SanityCourse } from "@/lib/sanity-queries";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -14,14 +16,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "courseId is required" }, { status: 400 });
   }
 
-  const course = await db.course.findUnique({ where: { id: courseId, isPublished: true } });
-  if (!course) {
+  const course = await sanityClient.fetch<SanityCourse | null>(
+    courseByIdQuery,
+    { id: courseId }
+  );
+  if (!course || !course.isPublished) {
     return NextResponse.json({ error: "Course not found" }, { status: 404 });
   }
 
-  // Check if already enrolled
   const existing = await db.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.user.id, courseId } },
+    where: { userId_sanityId: { userId: session.user.id, sanityId: courseId } },
   });
   if (existing?.status === "ACTIVE") {
     return NextResponse.json({ error: "Already enrolled" }, { status: 409 });
@@ -29,17 +33,15 @@ export async function POST(req: Request) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // Free course: enroll directly
   if (course.isFree || course.price === 0) {
     await db.enrollment.upsert({
-      where: { userId_courseId: { userId: session.user.id, courseId } },
+      where: { userId_sanityId: { userId: session.user.id, sanityId: courseId } },
       update: { status: "ACTIVE" },
-      create: { userId: session.user.id, courseId, status: "ACTIVE" },
+      create: { userId: session.user.id, sanityId: courseId, status: "ACTIVE" },
     });
     return NextResponse.json({ url: `${appUrl}/student/courses/${courseId}` });
   }
 
-  // Paid course: create Stripe Checkout session
   const stripeSession = await stripe.checkout.sessions.create({
     mode: "payment",
     payment_method_types: ["card"],
@@ -66,13 +68,12 @@ export async function POST(req: Request) {
     customer_email: session.user.email,
   });
 
-  // Create pending enrollment
   await db.enrollment.upsert({
-    where: { userId_courseId: { userId: session.user.id, courseId } },
+    where: { userId_sanityId: { userId: session.user.id, sanityId: courseId } },
     update: { status: "PENDING", stripeSessionId: stripeSession.id },
     create: {
       userId: session.user.id,
-      courseId,
+      sanityId: courseId,
       status: "PENDING",
       stripeSessionId: stripeSession.id,
     },

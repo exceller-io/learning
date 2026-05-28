@@ -29,8 +29,9 @@ export async function POST(req: Request) {
     const { courseId, userId } = session.metadata ?? {};
 
     if (courseId && userId) {
+      // courseId in Stripe metadata is the Sanity _id
       await db.enrollment.updateMany({
-        where: { userId, courseId, stripeSessionId: session.id },
+        where: { userId, sanityId: courseId, stripeSessionId: session.id },
         data: {
           status: "ACTIVE",
           stripePaymentIntentId: session.payment_intent as string,

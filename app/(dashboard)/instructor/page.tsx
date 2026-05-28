@@ -1,11 +1,24 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { sanityClient } from "@/lib/sanity";
+import { coursesByInstructorQuery } from "@/lib/sanity-queries";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, DollarSign, PlusCircle, Eye, EyeOff } from "lucide-react";
+
+type InstructorCourse = {
+  _id: string;
+  _createdAt: string;
+  title: string;
+  isPublished: boolean;
+  isFree: boolean;
+  price: number;
+  category?: { _id: string; name: string } | null;
+  moduleCount: number;
+};
 
 export default async function InstructorDashboard() {
   const session = await auth();
@@ -13,24 +26,31 @@ export default async function InstructorDashboard() {
     redirect("/");
   }
 
-  const courses = await db.course.findMany({
-    where: { instructorId: session.user.id },
-    include: {
-      _count: { select: { enrollments: true } },
-      category: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const courses = await sanityClient.fetch<InstructorCourse[]>(
+    coursesByInstructorQuery,
+    { instructorId: session.user.id }
+  );
 
-  const totalStudents = courses.reduce((sum, c) => sum + c._count.enrollments, 0);
-  const totalRevenue = await db.enrollment.aggregate({
-    where: {
-      course: { instructorId: session.user.id },
-      status: "ACTIVE",
-    },
-    _count: true,
-  });
+  const sanityIds = courses.map((c) => c._id);
 
+  // Enrollment counts per course and total active count
+  const [enrollmentGroups, totalActiveEnrollments] = await Promise.all([
+    sanityIds.length
+      ? db.enrollment.groupBy({
+          by: ["sanityId"],
+          where: { sanityId: { in: sanityIds } },
+          _count: { id: true },
+        })
+      : [],
+    sanityIds.length
+      ? db.enrollment.count({ where: { sanityId: { in: sanityIds }, status: "ACTIVE" } })
+      : 0,
+  ]);
+
+  const enrollmentMap = Object.fromEntries(
+    enrollmentGroups.map((r) => [r.sanityId, r._count.id])
+  );
+  const totalStudents = Object.values(enrollmentMap).reduce((s, n) => s + n, 0);
   const publishedCount = courses.filter((c) => c.isPublished).length;
 
   return (
@@ -53,7 +73,7 @@ export default async function InstructorDashboard() {
         {[
           { label: "Total courses", value: courses.length, sub: `${publishedCount} published`, icon: BookOpen, color: "text-indigo-600", bg: "bg-indigo-50" },
           { label: "Total students", value: totalStudents, sub: "across all courses", icon: Users, color: "text-purple-600", bg: "bg-purple-50" },
-          { label: "Active enrollments", value: totalRevenue._count, sub: "paid & free", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Active enrollments", value: totalActiveEnrollments, sub: "paid & free", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
         ].map(({ label, value, sub, icon: Icon, color, bg }) => (
           <div key={label} className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
             <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${bg}`}>
@@ -92,7 +112,7 @@ export default async function InstructorDashboard() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {courses.map((course) => (
-                <tr key={course.id} className="hover:bg-gray-50">
+                <tr key={course._id} className="hover:bg-gray-50">
                   <td className="px-5 py-4">
                     <p className="font-medium text-gray-900 line-clamp-1">{course.title}</p>
                     {course.category && (
@@ -117,9 +137,11 @@ export default async function InstructorDashboard() {
                       formatPrice(course.price)
                     )}
                   </td>
-                  <td className="px-5 py-4 text-gray-700">{course._count.enrollments}</td>
+                  <td className="px-5 py-4 text-gray-700">
+                    {enrollmentMap[course._id] ?? 0}
+                  </td>
                   <td className="px-5 py-4">
-                    <Link href={`/instructor/courses/${course.id}`}>
+                    <Link href={`/instructor/courses/${course._id}`}>
                       <Button variant="ghost" size="sm">Edit</Button>
                     </Link>
                   </td>
