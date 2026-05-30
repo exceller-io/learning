@@ -40,7 +40,7 @@ export async function PATCH(
     { id: courseId }
   );
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
+  if (course.author?.userId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -80,7 +80,7 @@ export async function DELETE(
     { id: courseId }
   );
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
+  if (course.author?.userId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

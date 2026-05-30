@@ -13,7 +13,7 @@ interface CourseCardProps {
     price: number;
     isFree: boolean;
     category: { name: string } | null;
-    instructor: { name: string | null; image: string | null };
+    author: { name: string | null; image: string | null };
     _count: { enrollments: number; modules: number };
   };
 }
@@ -64,7 +64,7 @@ export function CourseCard({ course }: CourseCardProps) {
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">by {course.instructor.name || "Instructor"}</p>
+            <p className="text-xs text-gray-500">by {course.author.name || "Author"}</p>
             <p className="text-base font-bold text-gray-900">
               {course.isFree || course.price === 0 ? (
                 <span className="text-emerald-600">Free</span>

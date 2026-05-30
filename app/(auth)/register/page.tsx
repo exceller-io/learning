@@ -17,7 +17,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["STUDENT", "INSTRUCTOR"]),
+  role: z.enum(["STUDENT", "AUTHOR"]),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -56,7 +56,7 @@ export default function RegisterPage() {
       redirect: false,
     });
 
-    router.push(data.role === "INSTRUCTOR" ? "/instructor" : "/student");
+    router.push(data.role === "AUTHOR" ? "/author" : "/student");
   };
 
   return (
@@ -125,7 +125,7 @@ export default function RegisterPage() {
               <Label htmlFor="role">I want to</Label>
               <Select id="role" {...register("role")}>
                 <option value="STUDENT">Learn (Student)</option>
-                <option value="INSTRUCTOR">Teach (Instructor)</option>
+                <option value="AUTHOR">Teach (Author)</option>
               </Select>
               {errors.role && (
                 <p className="text-xs text-red-600">{errors.role.message}</p>

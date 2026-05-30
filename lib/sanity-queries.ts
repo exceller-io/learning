@@ -32,6 +32,16 @@ export type SanityModule = {
   lessons: SanityLesson[]
 }
 
+export type SanityAuthor = {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  bio?: string
+  skills?: string[]
+  userId: string
+}
+
 export type SanityCourse = {
   _id: string
   _createdAt: string
@@ -43,8 +53,7 @@ export type SanityCourse = {
   isFree: boolean
   isPublished: boolean
   imageUrl?: string
-  instructorId: string
-  instructorName?: string
+  author?: SanityAuthor
   category?: { _id: string; name: string }
   modules: SanityModule[]
 }
@@ -58,8 +67,7 @@ export type SanityCourseListItem = {
   isFree: boolean
   isPublished: boolean
   imageUrl?: string
-  instructorId: string
-  instructorName?: string
+  author?: { firstName: string; lastName: string }
   category?: { _id: string; name: string }
   moduleCount: number
   lessonCount: number
@@ -89,7 +97,7 @@ export const coursesListQuery = `
     && ($categoryId == "" || category->_id == $categoryId)
   ]{
     _id, _createdAt, title, description, price, isFree, isPublished, imageUrl,
-    instructorId, instructorName,
+    "author": author->{ firstName, lastName },
     "category": category->{ _id, name },
     "moduleCount": count(modules),
     "lessonCount": count(modules[].lessons[])
@@ -99,7 +107,7 @@ export const coursesListQuery = `
 export const courseByIdQuery = `
   *[_type == "course" && _id == $id][0]{
     _id, _createdAt, _updatedAt, title, slug, description, price, isFree, isPublished, imageUrl,
-    instructorId, instructorName,
+    "author": author->{ _id, firstName, lastName, email, bio, skills, userId },
     "category": category->{ _id, name },
     modules[]{
       _key, title, description, position,
@@ -111,8 +119,8 @@ export const courseByIdQuery = `
   }
 `
 
-export const coursesByInstructorQuery = `
-  *[_type == "course" && instructorId == $instructorId]{
+export const coursesByAuthorQuery = `
+  *[_type == "course" && author->userId == $userId]{
     _id, _createdAt, title, isPublished, isFree, price,
     "category": category->{ _id, name },
     "moduleCount": count(modules)
@@ -121,7 +129,8 @@ export const coursesByInstructorQuery = `
 
 export const allCoursesAdminQuery = `
   *[_type == "course"] | order(_createdAt desc) [0...5]{
-    _id, _createdAt, title, isPublished, isFree, price, instructorName,
+    _id, _createdAt, title, isPublished, isFree, price,
+    "author": author->{ firstName, lastName },
     "category": category->{ _id, name }
   }
 `
@@ -130,6 +139,10 @@ export const courseCountQuery = `count(*[_type == "course"])`
 
 export const categoriesQuery = `
   *[_type == "category"] | order(name asc){ _id, name, slug }
+`
+
+export const authorByUserIdQuery = `
+  *[_type == "author" && userId == $userId][0]{ _id, firstName, lastName, email, bio, skills, userId }
 `
 
 // Finds a quiz by its lesson _key (quiz is embedded 1:1 inside each lesson)

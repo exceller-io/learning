@@ -11,8 +11,8 @@ export function Navbar() {
   const dashboardHref =
     session?.user?.role === "ADMIN"
       ? "/admin"
-      : session?.user?.role === "INSTRUCTOR"
-      ? "/instructor"
+      : session?.user?.role === "AUTHOR"
+      ? "/author"
       : "/student";
 
   return (

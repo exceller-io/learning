@@ -2,13 +2,13 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { sanityClient } from "@/lib/sanity";
 import { courseByIdQuery, categoriesQuery, type SanityCourse, type SanityCategory } from "@/lib/sanity-queries";
-import { CourseEditForm } from "@/components/instructor/course-edit-form";
-import { ModuleManager } from "@/components/instructor/module-manager";
+import { CourseEditForm } from "@/components/author/course-edit-form";
+import { ModuleManager } from "@/components/author/module-manager";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
-export default async function InstructorCourseEditPage({
+export default async function AuthorCourseEditPage({
   params,
 }: {
   params: Promise<{ courseId: string }>;
@@ -24,8 +24,8 @@ export default async function InstructorCourseEditPage({
   ]);
 
   if (!course) notFound();
-  if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
-    redirect("/instructor");
+  if (course.author?.userId !== session.user.id && session.user.role !== "ADMIN") {
+    redirect("/author");
   }
 
   const completionFields = [
@@ -69,7 +69,7 @@ export default async function InstructorCourseEditPage({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/instructor" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/author" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
           <ArrowLeft className="h-4 w-4" />
           Back to courses
         </Link>

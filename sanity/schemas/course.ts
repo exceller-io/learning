@@ -20,9 +20,13 @@ export const courseSchema = defineType({
     defineField({ name: 'price', type: 'number', initialValue: 0 }),
     defineField({ name: 'isFree', type: 'boolean', initialValue: false }),
     defineField({ name: 'isPublished', type: 'boolean', initialValue: false }),
+    defineField({ name: 'isFeatured', type: 'boolean', initialValue: false }),
     defineField({ name: 'imageUrl', type: 'url' }),
-    defineField({ name: 'instructorId', type: 'string' }),
-    defineField({ name: 'instructorName', type: 'string' }),
+    defineField({
+      name: 'author',
+      type: 'reference',
+      to: [{ type: 'author' }],
+    }),
     defineField({
       name: 'category',
       type: 'reference',

@@ -99,7 +99,7 @@ export function CourseEditForm({ course, categories }: CourseEditFormProps) {
     if (!confirm("Are you sure you want to delete this course? This cannot be undone.")) return;
     setDeleting(true);
     await fetch(`/api/courses/${course.id}`, { method: "DELETE" });
-    router.push("/instructor");
+    router.push("/author");
   };
 
   return (

@@ -44,7 +44,7 @@ export default async function AdminUsersPage() {
                     variant={
                       user.role === "ADMIN"
                         ? "destructive"
-                        : user.role === "INSTRUCTOR"
+                        : user.role === "AUTHOR"
                         ? "default"
                         : "secondary"
                     }

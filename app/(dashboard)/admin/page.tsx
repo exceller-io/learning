@@ -17,7 +17,7 @@ type AdminCourse = {
   isPublished: boolean;
   isFree: boolean;
   price: number;
-  instructorName?: string;
+  author?: { firstName: string; lastName: string } | null;
   category?: { name: string } | null;
 };
 
@@ -82,7 +82,7 @@ export default async function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
-                    variant={user.role === "ADMIN" ? "destructive" : user.role === "INSTRUCTOR" ? "default" : "secondary"}
+                    variant={user.role === "ADMIN" ? "destructive" : user.role === "AUTHOR" ? "default" : "secondary"}
                   >
                     {user.role}
                   </Badge>
@@ -106,7 +106,7 @@ export default async function AdminDashboard() {
               <li key={course._id} className="flex items-center justify-between text-sm">
                 <div>
                   <p className="font-medium text-gray-800 line-clamp-1">{course.title}</p>
-                  <p className="text-xs text-gray-400">by {course.instructorName ?? "Unknown"}</p>
+                  <p className="text-xs text-gray-400">by {course.author ? `${course.author.firstName} ${course.author.lastName}`.trim() : "Unknown"}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={course.isPublished ? "success" : "secondary"}>

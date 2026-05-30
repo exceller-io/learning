@@ -73,7 +73,7 @@ export default async function CourseDetailPage({
             <p className="mt-4 text-sm text-gray-400">
               Created by{" "}
               <span className="font-medium text-white">
-                {course.instructorName || "Instructor"}
+                {course.author ? `${course.author.firstName} ${course.author.lastName}`.trim() : "Author"}
               </span>
             </p>
           </div>

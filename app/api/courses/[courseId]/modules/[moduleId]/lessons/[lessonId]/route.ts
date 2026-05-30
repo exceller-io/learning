@@ -29,7 +29,7 @@ function textToPortableText(text: string) {
 async function assertOwnership(courseId: string, session: { user: { id: string; role: string } }) {
   const course = await sanityClient.fetch<SanityCourse | null>(courseByIdQuery, { id: courseId });
   if (!course) return null;
-  if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") return false;
+  if (course.author?.userId !== session.user.id && session.user.role !== "ADMIN") return false;
   return course;
 }
 

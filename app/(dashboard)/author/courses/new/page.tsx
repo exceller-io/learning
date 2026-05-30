@@ -41,12 +41,12 @@ export default function NewCoursePage() {
     }
 
     const course = await res.json();
-    router.push(`/instructor/courses/${course.id}`);
+    router.push(`/author/courses/${course.id}`);
   };
 
   return (
     <div className="mx-auto max-w-lg">
-      <Link href="/instructor" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+      <Link href="/author" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft className="h-4 w-4" />
         Back to dashboard
       </Link>

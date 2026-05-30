@@ -48,7 +48,7 @@ export default function LoginPage() {
     const role = session?.user?.role;
 
     if (role === "ADMIN") router.push("/admin");
-    else if (role === "INSTRUCTOR") router.push("/instructor");
+    else if (role === "AUTHOR") router.push("/author");
     else router.push("/student");
   };
 

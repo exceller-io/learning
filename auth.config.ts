@@ -25,8 +25,8 @@ export const authConfig: NextAuthConfig = {
       }
 
       if (
-        pathname.startsWith("/instructor") &&
-        role !== "INSTRUCTOR" &&
+        pathname.startsWith("/author") &&
+        role !== "AUTHOR" &&
         role !== "ADMIN"
       ) {
         return isLoggedIn
@@ -42,8 +42,8 @@ export const authConfig: NextAuthConfig = {
         const dest =
           role === "ADMIN"
             ? "/admin"
-            : role === "INSTRUCTOR"
-            ? "/instructor"
+            : role === "AUTHOR"
+            ? "/author"
             : "/student";
         return Response.redirect(new URL(dest, nextUrl));
       }

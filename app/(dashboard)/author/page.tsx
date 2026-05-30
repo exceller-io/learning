@@ -2,14 +2,14 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { sanityClient } from "@/lib/sanity";
-import { coursesByInstructorQuery } from "@/lib/sanity-queries";
+import { coursesByAuthorQuery } from "@/lib/sanity-queries";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, DollarSign, PlusCircle, Eye, EyeOff } from "lucide-react";
 
-type InstructorCourse = {
+type AuthorCourse = {
   _id: string;
   _createdAt: string;
   title: string;
@@ -20,15 +20,15 @@ type InstructorCourse = {
   moduleCount: number;
 };
 
-export default async function InstructorDashboard() {
+export default async function AuthorDashboard() {
   const session = await auth();
-  if (!session || (session.user.role !== "INSTRUCTOR" && session.user.role !== "ADMIN")) {
+  if (!session || (session.user.role !== "AUTHOR" && session.user.role !== "ADMIN")) {
     redirect("/");
   }
 
-  const courses = await sanityClient.fetch<InstructorCourse[]>(
-    coursesByInstructorQuery,
-    { instructorId: session.user.id }
+  const courses = await sanityClient.fetch<AuthorCourse[]>(
+    coursesByAuthorQuery,
+    { userId: session.user.id }
   );
 
   const sanityCourseIds = courses.map((c) => c._id);
@@ -57,10 +57,10 @@ export default async function InstructorDashboard() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Instructor Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Author Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">Manage your courses and track performance</p>
         </div>
-        <Link href="/instructor/courses/new">
+        <Link href="/author/courses/new">
           <Button>
             <PlusCircle className="h-4 w-4" />
             New course
@@ -94,7 +94,7 @@ export default async function InstructorDashboard() {
         <div className="rounded-2xl border-2 border-dashed border-gray-200 py-20 text-center">
           <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-300" />
           <p className="font-medium text-gray-500">No courses yet</p>
-          <Link href="/instructor/courses/new">
+          <Link href="/author/courses/new">
             <Button className="mt-4">Create your first course</Button>
           </Link>
         </div>
@@ -141,7 +141,7 @@ export default async function InstructorDashboard() {
                     {enrollmentMap[course._id] ?? 0}
                   </td>
                   <td className="px-5 py-4">
-                    <Link href={`/instructor/courses/${course._id}`}>
+                    <Link href={`/author/courses/${course._id}`}>
                       <Button variant="ghost" size="sm">Edit</Button>
                     </Link>
                   </td>

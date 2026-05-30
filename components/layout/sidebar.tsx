@@ -11,6 +11,7 @@ import {
   GraduationCap,
   BarChart2,
   Settings,
+  TableOfContents,
 } from "lucide-react";
 
 interface SidebarLink {
@@ -23,13 +24,15 @@ const adminLinks: SidebarLink[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/courses", label: "All Courses", icon: BookOpen },
+  { href: "/studio", label: "Sanity Studio", icon: TableOfContents},
 ];
 
-const instructorLinks: SidebarLink[] = [
-  { href: "/instructor", label: "Overview", icon: LayoutDashboard },
-  { href: "/instructor/courses", label: "My Courses", icon: BookOpen },
-  { href: "/instructor/courses/new", label: "New Course", icon: PlusCircle },
-  { href: "/instructor/analytics", label: "Analytics", icon: BarChart2 },
+const authorLinks: SidebarLink[] = [
+  { href: "/author", label: "Overview", icon: LayoutDashboard },
+  { href: "/author/courses", label: "My Courses", icon: BookOpen },
+  { href: "/author/courses/new", label: "New Course", icon: PlusCircle },
+  { href: "/author/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/studio", label: "Sanity Studio", icon: TableOfContents},
 ];
 
 const studentLinks: SidebarLink[] = [
@@ -39,7 +42,7 @@ const studentLinks: SidebarLink[] = [
 ];
 
 interface SidebarProps {
-  role: "ADMIN" | "INSTRUCTOR" | "STUDENT";
+  role: "ADMIN" | "AUTHOR" | "STUDENT";
 }
 
 export function Sidebar({ role }: SidebarProps) {
@@ -48,8 +51,8 @@ export function Sidebar({ role }: SidebarProps) {
   const links =
     role === "ADMIN"
       ? adminLinks
-      : role === "INSTRUCTOR"
-      ? instructorLinks
+      : role === "AUTHOR"
+      ? authorLinks
       : studentLinks;
 
   return (

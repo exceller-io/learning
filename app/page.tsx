@@ -96,7 +96,7 @@ export default async function HomePage() {
           <div className="mb-12 flex items-end justify-between">
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Featured courses</h2>
-              <p className="mt-2 text-gray-500">Hand-picked by our instructors for you</p>
+              <p className="mt-2 text-gray-500">Hand-picked by our authors for you</p>
             </div>
             <Link href="/courses">
               <Button variant="outline" size="sm">
@@ -123,7 +123,7 @@ export default async function HomePage() {
                     price: course.price,
                     isFree: course.isFree,
                     category: course.category ? { name: course.category.name } : null,
-                    instructor: { name: course.instructorName ?? null, image: null },
+                    author: { name: course.author ? `${course.author.firstName} ${course.author.lastName}`.trim() : null, image: null },
                     _count: { enrollments: 0, modules: course.moduleCount },
                   }}
                 />
@@ -141,7 +141,7 @@ export default async function HomePage() {
           </h2>
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { title: "Expert instructors", desc: "Learn from industry practitioners with real-world experience." },
+              { title: "Expert authors", desc: "Learn from industry practitioners with real-world experience." },
               { title: "Learn at your pace", desc: "Lifetime access to course materials. No deadlines, no pressure." },
               { title: "Hands-on projects", desc: "Build real projects and quizzes to reinforce your learning." },
               { title: "Progress tracking", desc: "See exactly where you are in every course with visual dashboards." },

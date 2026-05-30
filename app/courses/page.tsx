@@ -39,7 +39,7 @@ export default async function CoursesPage({
     price: c.price,
     isFree: c.isFree,
     category: c.category ? { name: c.category.name } : null,
-    instructor: { name: c.instructorName ?? null, image: null },
+    author: { name: c.author ? `${c.author.firstName} ${c.author.lastName}`.trim() : null, image: null },
     _count: { enrollments: 0, modules: c.moduleCount },
   }));
 

@@ -23,7 +23,7 @@ export async function POST(
   const { courseId } = await params;
   const course = await sanityClient.fetch<SanityCourse | null>(courseByIdQuery, { id: courseId });
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (course.instructorId !== session.user.id && session.user.role !== "ADMIN") {
+  if (course.author?.userId !== session.user.id && session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
