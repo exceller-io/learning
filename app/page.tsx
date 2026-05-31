@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sanityClient } from "@/lib/sanity";
 import { featuredCoursesQuery, type SanityCourseListItem } from "@/lib/sanity-queries";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/courses/course-card";
 import { GraduationCap, Users, BookOpen, Star, ArrowRight, CheckCircle } from "lucide-react";
@@ -129,6 +130,18 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Featured Blog posts */}
+      <section className="bg-indigo-600 py-16">
+          <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-white">Latest technical articles</h2>
+            <p className="mt-4 text-indigo-200">
+              Latest technical articles written by our authors.
+            </p>
+          </div>
+      </section>    
+      
+      {/* Connect with us */}
+
       {/* Why Exceller */}
       <section className="bg-gray-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -171,9 +184,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="bg-gray-900 py-10 text-center text-sm text-gray-400">
-        <p>© {new Date().getFullYear()} Exceller. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
