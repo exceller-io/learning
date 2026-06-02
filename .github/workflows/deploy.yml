@@ -48,7 +48,7 @@ jobs:
         run: yarn global add vercel@latest
 
       - name: Pull Vercel environment
-        run: vercel pull --yes --environment=${{ github.event_name == 'push' && 'production' || 'preview' }} --token=${{ env.VERCEL_TOKEN }} --org=${{ env.VERCEL_ORG_ID }} --project=${{ env.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=${{ github.event_name == 'push' && 'production' || 'preview' }} --token=${{ env.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel (Preview)
         id: deploy-preview
