@@ -1,0 +1,245 @@
+name: Vercel deployment workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  
+jobs:
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    environment: staging
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+      NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+      SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: yarn run db:generate
+
+      - name: Build
+        run: yarn run build
+
+      - name: Install Vercel CLI
+        run: yarn global add vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
+      
+      - name: Update environment variables
+        run: |
+          vercel env rm DATABASE_URL preview --yes || true 
+          echo "${{ secrets.DATABASE_URL }}" | \
+          vercel env add DATABASE_URL preview
+          vercel env rm AUTH_SECRET preview --yes || true
+          echo "${{ secrets.AUTH_SECRET }}" | \
+          vercel env add AUTH_SECRET preview
+          vercel env rm NEXT_PUBLIC_APP_URL preview --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_APP_URL }}" | \
+          vercel env add NEXT_PUBLIC_APP_URL preview
+          vercel env rm NEXT_PUBLIC_SANITY_PROJECT_ID preview --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}" | \
+          vercel env add NEXT_PUBLIC_SANITY_PROJECT_ID preview
+          vercel env rm NEXT_PUBLIC_SANITY_DATASET preview --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}" | \
+          vercel env add NEXT_PUBLIC_SANITY_DATASET preview
+          vercel env rm SANITY_API_TOKEN preview --yes || true
+          echo "${{ secrets.SANITY_API_TOKEN }}" | \
+          vercel env add SANITY_API_TOKEN preview
+          vercel env rm STRIPE_SECRET_KEY preview --yes || true
+          echo "${{ secrets.STRIPE_SECRET_KEY }}" | \
+          vercel env add STRIPE_SECRET_KEY preview
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        run: |
+          url=$(vercel deploy --token=${{ env.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+
+      - name: Update PR with preview deployment info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.deploy.outputs.url }}';
+            const sha = context.payload.pull_request.head.sha.substring(0, 7);
+            const body = [
+              '## Preview Deployment',
+              '',
+              '| | |',
+              '|--|--|',
+              `| **Status** | ✅ Ready |`,
+              `| **Preview URL** | ${previewUrl} |`,
+              `| **Commit** | \`${sha}\` |`,
+              `| **Updated** | ${new Date().toUTCString()} |`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('## Preview Deployment')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  promote-to-production:
+    name: Promote to Production
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    permissions:
+      pull-requests: read
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+      NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}
+      NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}
+      SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+    steps:
+      - name: Find preview deployment URL from merged PR
+        id: preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+              });
+              if (!prs.length) {
+                core.info('No associated PR found — will run a fresh production deploy');
+                return;
+              }
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+              });
+              const previewComment = comments.find(c =>
+                c.user.type === 'Bot' && c.body.includes('## Preview Deployment')
+              );
+              if (!previewComment) {
+                core.info('No preview deployment comment on PR — will run a fresh production deploy');
+                return;
+              }
+              const match = previewComment.body.match(/\*\*Preview URL\*\* \| (https:\/\/[^\s|]+)/);
+              if (match) {
+                core.setOutput('url', match[1].trim());
+                core.info(`Promoting preview: ${match[1].trim()}`);
+              }
+            } catch (err) {
+              core.warning(`Error finding preview URL: ${err.message}`);
+            }
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Update environment variables
+        run: |
+          vercel env rm DATABASE_URL production --yes || true 
+          echo "${{ secrets.DATABASE_URL }}" | \
+          vercel env add DATABASE_URL production
+          vercel env rm AUTH_SECRET production --yes || true
+          echo "${{ secrets.AUTH_SECRET }}" | \
+          vercel env add AUTH_SECRET production
+          vercel env rm NEXT_PUBLIC_APP_URL production --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_APP_URL }}" | \
+          vercel env add NEXT_PUBLIC_APP_URL production
+          vercel env rm NEXT_PUBLIC_SANITY_PROJECT_ID production --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}" | \
+          vercel env add NEXT_PUBLIC_SANITY_PROJECT_ID production
+          vercel env rm NEXT_PUBLIC_SANITY_DATASET production --yes || true
+          echo "${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}" | \
+          vercel env add NEXT_PUBLIC_SANITY_DATASET production
+          vercel env rm SANITY_API_TOKEN production --yes || true
+          echo "${{ secrets.SANITY_API_TOKEN }}" | \
+          vercel env add SANITY_API_TOKEN production
+          vercel env rm STRIPE_SECRET_KEY production --yes || true
+          echo "${{ secrets.STRIPE_SECRET_KEY }}" | \
+          vercel env add STRIPE_SECRET_KEY production
+
+      - name: Promote preview to production
+        if: steps.preview.outputs.url != ''
+        run: vercel promote ${{ steps.preview.outputs.url }} --token=${{ env.VERCEL_TOKEN }}
+
+      # Fallback: full build + production deploy when no preview deployment exists
+      - name: Checkout
+        if: steps.preview.outputs.url == ''
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.preview.outputs.url == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        if: steps.preview.outputs.url == ''
+        run: yarn install --frozen-lockfile
+
+      - name: Generate Prisma client
+        if: steps.preview.outputs.url == ''
+        run: yarn run db:generate
+
+      - name: Build
+        if: steps.preview.outputs.url == ''
+        run: yarn run build
+
+      - name: Pull Vercel environment
+        if: steps.preview.outputs.url == ''
+        run: vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Deploy to production
+        if: steps.preview.outputs.url == ''
+        run: vercel deploy --prod --token=${{ env.VERCEL_TOKEN }}

@@ -107,7 +107,7 @@ export const coursesListQuery = `
 `
 
 export const courseByIdQuery = `
-  *[_type == "course" && _id == $id][0]{
+  *[_type == "course" && !(_id in path("drafts.**")) && _id == $id][0]{
     _id, _createdAt, _updatedAt, title, slug, description, price, isFree, isPublished, imageUrl,
     "author": author->{ _id, firstName, lastName, email, bio, skills, userId },
     "category": category->{ _id, name },
@@ -122,7 +122,7 @@ export const courseByIdQuery = `
 `
 
 export const coursesByAuthorQuery = `
-  *[_type == "course" && author->userId == $userId]{
+  *[_type == "course" && !(_id in path("drafts.**")) && author->userId == $userId]{
     _id, _createdAt, title, isPublished, isFree, price,
     "category": category->{ _id, name },
     "moduleCount": count(modules)
@@ -130,14 +130,14 @@ export const coursesByAuthorQuery = `
 `
 
 export const allCoursesAdminQuery = `
-  *[_type == "course"] | order(_createdAt desc) [0...5]{
+  *[_type == "course" && !(_id in path("drafts.**"))] | order(_createdAt desc) [0...5]{
     _id, _createdAt, title, isPublished, isFree, price,
     "author": author->{ firstName, lastName },
     "category": category->{ _id, name }
   }
 `
 
-export const courseCountQuery = `count(*[_type == "course"])`
+export const courseCountQuery = `count(*[_type == "course" && !(_id in path("drafts.**"))])`
 
 export const featuredCoursesQuery = `
   *[_type == "course" && isPublished == true && isFeatured == true]{
@@ -205,16 +205,16 @@ export const featuredArticlesQuery = `
 `
 
 export const categoriesQuery = `
-  *[_type == "category"] | order(name asc){ _id, name, slug }
+  *[_type == "category" && !(_id in path("drafts.**"))] | order(name asc){ _id, name, slug }
 `
 
 export const authorByUserIdQuery = `
-  *[_type == "author" && userId == $userId][0]{ _id, firstName, lastName, email, bio, skills, userId }
+  *[_type == "author" && !(_id in path("drafts.**")) && userId == $userId][0]{ _id, firstName, lastName, email, bio, skills, userId }
 `
 
 // Finds a quiz by its lesson _key (quiz is embedded 1:1 inside each lesson)
 export const quizByLessonKeyQuery = `
-  *[_type == "course"]{
+  *[_type == "course" && !(_id in path("drafts.**"))]{
     modules[]{
       lessons[_key == $key]{
         quiz{ title, questions[]{ _key, text, options, correctAnswer } }
