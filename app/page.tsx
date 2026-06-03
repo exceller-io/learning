@@ -15,7 +15,7 @@ async function getFeaturedCourses() {
 
 async function getStats() {
   const [courses, users, enrollments] = await Promise.all([
-    sanityClient.fetch<number>(`count(*[_type == "course" && isPublished == true])`),
+    sanityClient.fetch<number>(`count(*[_type == "course" && !(_id in path("drafts.**")) && isPublished == true])`),
     db.user.count(),
     db.enrollment.count({ where: { status: "ACTIVE" } }),
   ]);
