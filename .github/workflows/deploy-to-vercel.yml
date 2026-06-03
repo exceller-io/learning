@@ -47,18 +47,15 @@ jobs:
       - name: Generate Prisma client
         run: yarn run db:generate
 
-      - name: Build
-        run: yarn run build
-
       - name: Install Vercel CLI
         run: yarn global add vercel@latest
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
-      
+
       - name: Update environment variables
         run: |
-          vercel env rm DATABASE_URL preview --yes || true 
+          vercel env rm DATABASE_URL preview --yes || true
           echo "${{ secrets.DATABASE_URL }}" | \
           vercel env add DATABASE_URL preview
           vercel env rm AUTH_SECRET preview --yes || true
@@ -80,10 +77,13 @@ jobs:
           echo "${{ secrets.STRIPE_SECRET_KEY }}" | \
           vercel env add STRIPE_SECRET_KEY preview
 
+      - name: Build
+        run: vercel build --token=${{ env.VERCEL_TOKEN }}
+
       - name: Deploy preview to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --token=${{ env.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --token=${{ env.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
 
       - name: Update PR with preview deployment info
@@ -132,7 +132,7 @@ jobs:
   promote-to-production:
     name: Promote to Production
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main')
     permissions:
       pull-requests: read
     environment: production
