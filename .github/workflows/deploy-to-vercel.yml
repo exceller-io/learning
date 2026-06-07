@@ -78,7 +78,7 @@ jobs:
 
     steps:
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: yarn global add vercel@latest
 
       - name: Find preview deployment URL with READY state from vercel
         id: preview
