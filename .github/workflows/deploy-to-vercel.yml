@@ -74,7 +74,7 @@ jobs:
           vercel env rm NEXT_PUBLIC_DISQUS_SHORTNAME preview --yes || true
           echo "${{ secrets.NEXT_PUBLIC_DISQUS_SHORTNAME }}" | \
           vercel env add NEXT_PUBLIC_DISQUS_SHORTNAME preview
-          
+
       - name: Build
         run: vercel build --token=${{ env.VERCEL_TOKEN }}
 
@@ -107,7 +107,7 @@ jobs:
       - name: Find preview deployment URL with READY state from vercel
         id: preview
         run: | 
-          PREVIEW_URL=$(vercel ls learning --environment=preview --format=json | jq -r '.deployments | map(select(.state == "READY")) | first | .url)
+          PREVIEW_URL=$(vercel ls learning --token=${{ env.VERCEL_TOKEN }} --environment=preview --format=json | jq -r '.deployments | map(select(.state == "READY")) | first | .url)
           echo="url=${PREVIEW_URL}"
 
       - name: Install Vercel CLI
