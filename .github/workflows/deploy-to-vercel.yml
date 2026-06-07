@@ -48,33 +48,6 @@ jobs:
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
 
-      - name: Update environment variables
-        run: |
-          vercel env rm DATABASE_URL preview --yes || true
-          echo "${{ secrets.DATABASE_URL }}" | \
-          vercel env add DATABASE_URL preview
-          vercel env rm AUTH_SECRET preview --yes || true
-          echo "${{ secrets.AUTH_SECRET }}" | \
-          vercel env add AUTH_SECRET preview
-          vercel env rm NEXT_PUBLIC_APP_URL preview --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_APP_URL }}" | \
-          vercel env add NEXT_PUBLIC_APP_URL preview
-          vercel env rm NEXT_PUBLIC_SANITY_PROJECT_ID preview --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}" | \
-          vercel env add NEXT_PUBLIC_SANITY_PROJECT_ID preview
-          vercel env rm NEXT_PUBLIC_SANITY_DATASET preview --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}" | \
-          vercel env add NEXT_PUBLIC_SANITY_DATASET preview
-          vercel env rm SANITY_API_TOKEN preview --yes || true
-          echo "${{ secrets.SANITY_API_TOKEN }}" | \
-          vercel env add SANITY_API_TOKEN preview
-          vercel env rm STRIPE_SECRET_KEY preview --yes || true
-          echo "${{ secrets.STRIPE_SECRET_KEY }}" | \
-          vercel env add STRIPE_SECRET_KEY preview
-          vercel env rm NEXT_PUBLIC_DISQUS_SHORTNAME preview --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_DISQUS_SHORTNAME }}" | \
-          vercel env add NEXT_PUBLIC_DISQUS_SHORTNAME preview
-
       - name: Build
         run: vercel build --token=${{ env.VERCEL_TOKEN }}
 
@@ -104,41 +77,14 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
 
     steps:
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
       - name: Find preview deployment URL with READY state from vercel
         id: preview
         run: | 
           PREVIEW_URL=$(vercel ls learning --token=${{ env.VERCEL_TOKEN }} --environment=preview --format=json | jq -r '.deployments | map(select(.state == "READY")) | first | .url')
           echo="url=${PREVIEW_URL}"
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Update environment variables
-        run: |
-          vercel env rm DATABASE_URL production --yes || true 
-          echo "${{ secrets.DATABASE_URL }}" | \
-          vercel env add DATABASE_URL production
-          vercel env rm AUTH_SECRET production --yes || true
-          echo "${{ secrets.AUTH_SECRET }}" | \
-          vercel env add AUTH_SECRET production
-          vercel env rm NEXT_PUBLIC_APP_URL production --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_APP_URL }}" | \
-          vercel env add NEXT_PUBLIC_APP_URL production
-          vercel env rm NEXT_PUBLIC_SANITY_PROJECT_ID production --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_SANITY_PROJECT_ID }}" | \
-          vercel env add NEXT_PUBLIC_SANITY_PROJECT_ID production
-          vercel env rm NEXT_PUBLIC_SANITY_DATASET production --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_SANITY_DATASET }}" | \
-          vercel env add NEXT_PUBLIC_SANITY_DATASET production
-          vercel env rm SANITY_API_TOKEN production --yes || true
-          echo "${{ secrets.SANITY_API_TOKEN }}" | \
-          vercel env add SANITY_API_TOKEN production
-          vercel env rm STRIPE_SECRET_KEY production --yes || true
-          echo "${{ secrets.STRIPE_SECRET_KEY }}" | \
-          vercel env add STRIPE_SECRET_KEY production
-          vercel env rm NEXT_PUBLIC_DISQUS_SHORTNAME production --yes || true
-          echo "${{ secrets.NEXT_PUBLIC_DISQUS_SHORTNAME }}" | \
-          vercel env add NEXT_PUBLIC_DISQUS_SHORTNAME production
 
       - name: Promote preview to production
         if: steps.preview.outputs.url != ''
