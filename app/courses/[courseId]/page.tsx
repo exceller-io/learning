@@ -5,6 +5,8 @@ import { sanityClient } from "@/lib/sanity";
 import { courseByIdQuery, type SanityCourse } from "@/lib/sanity-queries";
 import { Navbar } from "@/components/layout/navbar";
 import { EnrollButton } from "@/components/courses/enroll-button";
+import { RatingWidget } from "@/components/shared/rating-widget";
+import { DisqusComments } from "@/components/shared/disqus-comments";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { BookOpen, Clock, Users, CheckCircle, Lock, PlayCircle } from "lucide-react";
@@ -24,13 +26,30 @@ export default async function CourseDetailPage({
 
   if (!course || !course.isPublished) notFound();
 
-  const [enrollment, enrollmentCount] = await Promise.all([
+  const [enrollment, enrollmentCount, ratingAggregate, userRatingRecord] = await Promise.all([
     session
       ? db.enrollment.findUnique({
           where: { userId_sanityCourseId: { userId: session.user.id, sanityCourseId: courseId } },
         })
       : null,
     db.enrollment.count({ where: { sanityCourseId: courseId, status: "ACTIVE" } }),
+    db.rating.aggregate({
+      where: { contentType: "course", contentId: courseId },
+      _avg: { value: true },
+      _count: { value: true },
+    }),
+    session
+      ? db.rating.findUnique({
+          where: {
+            userId_contentType_contentId: {
+              userId: session.user.id,
+              contentType: "course",
+              contentId: courseId,
+            },
+          },
+          select: { value: true },
+        })
+      : null,
   ]);
 
   const isEnrolled = enrollment?.status === "ACTIVE";
@@ -76,12 +95,23 @@ export default async function CourseDetailPage({
                 {course.author ? `${course.author.firstName} ${course.author.lastName}`.trim() : "Author"}
               </span>
             </p>
+            <div className="mt-4">
+              <RatingWidget
+                contentType="course"
+                contentId={courseId}
+                initialAverage={ratingAggregate._avg.value}
+                initialCount={ratingAggregate._count.value}
+                initialUserRating={userRatingRecord?.value ?? null}
+                canRate={isEnrolled}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
+
           {/* Main content */}
           <div className="lg:col-span-2">
             <h2 className="mb-6 text-2xl font-bold text-gray-900">Course curriculum</h2>
@@ -164,6 +194,14 @@ export default async function CourseDetailPage({
             </div>
           </div>
         </div>
+
+        {process.env.NEXT_PUBLIC_DISQUS_SHORTNAME && (
+          <DisqusComments
+            shortname={process.env.NEXT_PUBLIC_DISQUS_SHORTNAME}
+            identifier={`course-${courseId}`}
+            title={course.title}
+          />
+        )}
       </div>
     </div>
   );

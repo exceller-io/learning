@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/courses/course-card";
-import { GraduationCap, Users, BookOpen, Star, ArrowRight, CheckCircle } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Star, ArrowRight, CheckCircle, FilePen } from "lucide-react";
 import { LatestArticles } from "@/components/articles/latest-articles";
 
 async function getFeaturedCourses() {
@@ -14,12 +14,13 @@ async function getFeaturedCourses() {
 }
 
 async function getStats() {
-  const [courses, users, enrollments] = await Promise.all([
+  const [courses, articles, users, enrollments] = await Promise.all([
     sanityClient.fetch<number>(`count(*[_type == "course" && !(_id in path("drafts.**")) && isPublished == true])`),
+    sanityClient.fetch<number>(`count(*[_type == "article" && !(_id in path("drafts.**")) && isPublished == true])`),
     db.user.count(),
     db.enrollment.count({ where: { status: "ACTIVE" } }),
   ]);
-  return { courses, users, enrollments };
+  return { courses, articles, users, enrollments };
 }
 
 export default async function HomePage() {
@@ -68,9 +69,10 @@ export default async function HomePage() {
       {/* Stats */}
       <section className="border-b border-gray-100 bg-white py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-4">
             {[
               { icon: BookOpen, label: "Courses available", value: stats.courses },
+              { icon: FilePen, label: "Articles available", value: stats.articles },
               { icon: Users, label: "Active learners", value: stats.users },
               { icon: GraduationCap, label: "Enrollments completed", value: stats.enrollments },
             ].map(({ icon: Icon, label, value }) => (
@@ -133,8 +135,6 @@ export default async function HomePage() {
 
       {/* Latest articles */}
       <LatestArticles />
-
-      {/* Connect with us */}
 
       {/* Why Exceller */}
       <section className="bg-gray-50 py-20">

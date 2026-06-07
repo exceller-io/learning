@@ -38,6 +38,7 @@ model User {
   enrollments    Enrollment[]
   lessonProgress LessonProgress[]
   quizAttempts   QuizAttempt[]
+  ratings        Rating[]
 }
 
 model Account {
@@ -114,6 +115,20 @@ model LessonProgress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonSanityId])
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  userId      String
+  contentType String   // "course" | "article"
+  contentId   String
+  value       Int      // 1–5
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentType, contentId])
 }
 
 // quizSanityId = the lesson _key whose quiz was attempted (1 quiz per lesson).

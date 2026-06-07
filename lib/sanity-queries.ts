@@ -157,11 +157,7 @@ export type SanityArticle = {
   title: string
   slug: { current: string }
   summary: string
-  coverImage?: {
-    _type: 'image'
-    asset: { _ref: string; _type: 'reference' }
-    hotspot?: { x: number; y: number; height: number; width: number }
-  }
+  coverImageUrl?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any[]
   author?: { firstName: string; lastName: string }
@@ -201,6 +197,38 @@ export const featuredArticlesQuery = `
     "coverImageUrl": coverImage.asset->url,
     "author": author->{ firstName, lastName },
     tags, readingTimeMinutes, publishedAt
+  }
+`
+
+export const articlesListQuery = `
+  *[_type == "article" && isPublished == true
+    && ($search == "" || title match ($search + "*"))
+    && ($tagFilter == "" || $tagFilter in tags)
+  ] | order(publishedAt desc) {
+    _id, title, slug, summary,
+    "coverImageUrl": coverImage.asset->url,
+    "author": author->{ firstName, lastName },
+    tags, readingTimeMinutes, publishedAt
+  }
+`
+
+export const articleTagsQuery = `
+  array::unique(*[_type == "article" && isPublished == true].tags[])
+`
+
+export const articleBySlugQuery = `
+  *[_type == "article" && isPublished == true && slug.current == $slug][0]{
+    _id, _createdAt, title, slug, summary,
+    "coverImageUrl": coverImage.asset->url,
+    body[]{
+      ...,
+      _type == "image" => {
+        ...,
+        "asset": asset->{ url, metadata }
+      }
+    },
+    "author": author->{ firstName, lastName },
+    tags, readingTimeMinutes, isPublished, isFeatured, publishedAt
   }
 `
 

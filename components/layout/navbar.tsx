@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { GraduationCap, LogOut, User, BookOpen, LayoutDashboard } from "lucide-react";
+import { GraduationCap, LogOut, User, BookOpen, LayoutDashboard, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -28,6 +28,12 @@ export function Navbar() {
             <Button variant="ghost" size="sm" className="gap-1.5">
               <BookOpen className="h-4 w-4" />
               Courses
+            </Button>
+          </Link>
+          <Link href="/articles">
+            <Button variant="ghost" size="sm" className="gap-1.5">
+              <FileText className="h-4 w-4" />
+              Articles
             </Button>
           </Link>
 
