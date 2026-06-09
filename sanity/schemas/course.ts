@@ -65,7 +65,12 @@ export const courseSchema = defineType({
                       name: 'content',
                       title: 'Content',
                       type: 'array',
-                      of: [{ type: 'block' }],
+                      of: [
+                        { type: 'block' },
+                        { type: 'image', options: { hotspot: true } },
+                        { type: 'code' },
+                        { type: 'table' },
+                      ],
                     }),
                     defineField({ name: 'videoUrl', type: 'url' }),
                     defineField({ name: 'isFree', type: 'boolean', initialValue: false }),

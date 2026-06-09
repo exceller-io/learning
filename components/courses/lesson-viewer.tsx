@@ -7,6 +7,73 @@ import { Button } from "@/components/ui/button";
 import { QuizCard } from "@/components/courses/quiz-card";
 import { PortableText } from "@portabletext/react";
 
+const portableTextComponents = {
+  types: {
+    table: ({ value }: any) => (
+      <div className="mb-6 overflow-x-auto rounded-xl border border-gray-200">
+        <table className="w-full text-sm text-left text-gray-700">
+          <tbody>
+            {(value.rows ?? []).map((row: any, rowIndex: number) => (
+              <tr key={row._key ?? rowIndex} className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                {(row.cells ?? []).map((cell: string, cellIndex: number) =>
+                  rowIndex === 0 ? (
+                    <th key={cellIndex} className="px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">
+                      {cell}
+                    </th>
+                  ) : (
+                    <td key={cellIndex} className="px-4 py-2 border-b border-gray-100">
+                      {cell}
+                    </td>
+                  )
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ),
+    image: ({ value }: any) => (
+      <div className="mb-6">
+        <img
+          src={value.asset?.url ?? value.url}
+          alt={value.alt ?? ""}
+          className="rounded-xl max-w-full"
+        />
+      </div>
+    ),
+    code: ({ value }: any) => (
+      <pre className="mb-6 overflow-x-auto rounded-xl bg-gray-900 p-4 text-sm text-gray-100">
+        <code>{value.code}</code>
+      </pre>
+    ),
+  },
+  block: {
+    h1: ({ children }: any) => <h1 className="text-3xl font-bold text-gray-900 mt-8 mb-4">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-2xl font-semibold text-gray-900 mt-6 mb-3">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-xl font-semibold text-gray-800 mt-5 mb-2">{children}</h3>,
+    h4: ({ children }: any) => <h4 className="text-lg font-semibold text-gray-800 mt-4 mb-2">{children}</h4>,
+    normal: ({ children }: any) => <p className="mb-4 leading-relaxed text-gray-700">{children}</p>,
+    blockquote: ({ children }: any) => (
+      <blockquote className="my-4 border-l-4 border-indigo-300 pl-4 italic text-gray-600">{children}</blockquote>
+    ),
+  },
+  marks: {
+    strong: ({ children }: any) => <strong className="font-semibold text-gray-900">{children}</strong>,
+    em: ({ children }: any) => <em className="italic">{children}</em>,
+    code: ({ children }: any) => (
+      <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-sm text-indigo-700">{children}</code>
+    ),
+  },
+  list: {
+    bullet: ({ children }: any) => <ul className="mb-4 list-disc space-y-1 pl-6 text-gray-700">{children}</ul>,
+    number: ({ children }: any) => <ol className="mb-4 list-decimal space-y-1 pl-6 text-gray-700">{children}</ol>,
+  },
+  listItem: {
+    bullet: ({ children }: any) => <li className="leading-relaxed">{children}</li>,
+    number: ({ children }: any) => <li className="leading-relaxed">{children}</li>,
+  },
+}
+
 interface Lesson {
   id: string;
   title: string;
@@ -41,7 +108,7 @@ export function LessonViewer({ lesson, courseId, isCompleted }: LessonViewerProp
     await fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId: lesson.id, isCompleted: true }),
+      body: JSON.stringify({ lessonSanityId: lesson.id, isCompleted: true }),
     });
     setCompleted(true);
     setLoading(false);
@@ -78,10 +145,8 @@ export function LessonViewer({ lesson, courseId, isCompleted }: LessonViewerProp
 
       {/* Content */}
       {lesson.content && lesson.content.length > 0 && (
-        <div className="prose prose-indigo max-w-none mb-8">
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm leading-relaxed text-gray-700">
-            <PortableText value={lesson.content} />
-          </div>
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6">
+          <PortableText value={lesson.content} components={portableTextComponents} />
         </div>
       )}
 
