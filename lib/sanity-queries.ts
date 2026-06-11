@@ -114,7 +114,14 @@ export const courseByIdQuery = `
     modules[]{
       _key, title, description, position,
       lessons[] | order(position asc){
-        _key, title, description, content, videoUrl, isFree, position,
+        _key, title, description, videoUrl, isFree, position,
+        content[]{
+          ...,
+          _type == "image" => {
+            ...,
+            "asset": asset->{ _id, url, metadata }
+          }
+        },
         quiz{ title, questions[]{ _key, text, options, correctAnswer } }
       }
     } | order(position asc)

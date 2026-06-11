@@ -6,6 +6,7 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuizCard } from "@/components/courses/quiz-card";
 import { PortableText } from "@portabletext/react";
+import { urlFor } from "@/lib/sanity";
 
 const portableTextComponents = {
   types: {
@@ -35,7 +36,7 @@ const portableTextComponents = {
     image: ({ value }: any) => (
       <div className="mb-6">
         <img
-          src={value.asset?.url ?? value.url}
+          src={value.asset?.url ?? urlFor(value).url()}
           alt={value.alt ?? ""}
           className="rounded-xl max-w-full"
         />
