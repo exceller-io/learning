@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/courses/course-card";
 import { GraduationCap, Users, BookOpen, Star, ArrowRight, CheckCircle, FilePen } from "lucide-react";
 import { LatestArticles } from "@/components/articles/latest-articles";
+import { Testimonials } from "@/components/home/testimonials";
 import { getBatchRatings } from "@/lib/ratings";
 
 async function getFeaturedCourses() {
@@ -165,6 +166,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Testimonials */}
+      <Testimonials />
 
       {/* CTA */}
       <section className="bg-indigo-600 py-16">
