@@ -64,8 +64,6 @@ jobs:
     name: Promote to Production
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    permissions:
-      pull-requests: read
     environment: production
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
