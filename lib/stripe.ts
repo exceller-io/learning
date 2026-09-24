@@ -6,7 +6,7 @@ let _stripe: Stripe | undefined;
 export const stripe: Stripe = new Proxy({} as Stripe, {
   get(_target, prop) {
     _stripe ??= new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: "2026-04-22.dahlia",
+      apiVersion: "2026-08-26.dahlia",
       typescript: true,
     });
     const val = Reflect.get(_stripe, prop, _stripe);

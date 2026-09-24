@@ -1,6 +1,8 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
-import { courseSchema, categorySchema, authorSchema, articleSchema } from './sanity/schemas'
+import { codeInput } from '@sanity/code-input'
+import { table } from '@sanity/table'
+import { courseSchema, categorySchema, authorSchema, articleSchema, testimonialSchema } from './sanity/schemas'
 import { sanityEnv } from './sanity/env'
 
 export default defineConfig({
@@ -8,8 +10,8 @@ export default defineConfig({
   title: 'Exceller learning platform',
   basePath: "/studio",
   ...sanityEnv,
-  plugins: [structureTool()],
+  plugins: [structureTool(), codeInput(), table()],
   schema: {
-    types: [courseSchema, categorySchema, authorSchema, articleSchema],
+    types: [courseSchema, categorySchema, authorSchema, articleSchema, testimonialSchema],
   },
 })

@@ -133,6 +133,7 @@ export default async function StudentCourseViewPage({
       <div className="flex-1 overflow-y-auto">
         {normalisedLesson ? (
           <LessonViewer
+            key={normalisedLesson.id}
             lesson={normalisedLesson}
             courseId={courseId}
             isCompleted={completedKeys.has(activeLesson!._key)}

@@ -114,7 +114,14 @@ export const courseByIdQuery = `
     modules[]{
       _key, title, description, position,
       lessons[] | order(position asc){
-        _key, title, description, content, videoUrl, isFree, position,
+        _key, title, description, videoUrl, isFree, position,
+        content[]{
+          ...,
+          _type == "image" => {
+            ...,
+            "asset": asset->{ _id, url, metadata }
+          }
+        },
         quiz{ title, questions[]{ _key, text, options, correctAnswer } }
       }
     } | order(position asc)
@@ -238,6 +245,29 @@ export const categoriesQuery = `
 
 export const authorByUserIdQuery = `
   *[_type == "author" && !(_id in path("drafts.**")) && userId == $userId][0]{ _id, firstName, lastName, email, bio, skills, userId }
+`
+
+// ─── Testimonial types ───────────────────────────────────────────────────────
+
+export type SanityTestimonial = {
+  _id: string
+  name: string
+  role?: string
+  company?: string
+  avatarUrl?: string
+  quote: string
+  rating?: number
+}
+
+// ─── Testimonial GROQ queries ─────────────────────────────────────────────────
+
+export const featuredTestimonialsQuery = `
+  *[_type == "testimonial" && isPublished == true && isFeatured == true]
+    | order(order asc, _createdAt desc) [0...6] {
+    _id, name, role, company,
+    "avatarUrl": avatar.asset->url,
+    quote, rating
+  }
 `
 
 // Finds a quiz by its lesson _key (quiz is embedded 1:1 inside each lesson)

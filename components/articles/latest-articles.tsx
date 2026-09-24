@@ -4,6 +4,7 @@ import { latestArticlesQuery, type SanityArticleListItem } from "@/lib/sanity-qu
 import { ArticleCard } from "./article-card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, FileText } from "lucide-react";
+import { getBatchRatings } from "@/lib/ratings";
 
 async function getLatestArticles(): Promise<SanityArticleListItem[]> {
   return sanityClient.fetch(latestArticlesQuery);
@@ -11,6 +12,7 @@ async function getLatestArticles(): Promise<SanityArticleListItem[]> {
 
 export async function LatestArticles() {
   const articles = await getLatestArticles();
+  const articleRatings = await getBatchRatings("article", articles.map((a) => a.slug.current));
 
   return (
     <section className="py-20">
@@ -35,7 +37,7 @@ export async function LatestArticles() {
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {articles.map((article) => (
-              <ArticleCard key={article._id} article={article} />
+              <ArticleCard key={article._id} article={article} rating={articleRatings[article.slug.current]} />
             ))}
           </div>
         )}

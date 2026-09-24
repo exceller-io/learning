@@ -64,8 +64,6 @@ jobs:
     name: Promote to Production
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    permissions:
-      pull-requests: read
     environment: production
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -78,7 +76,7 @@ jobs:
 
     steps:
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: yarn global add vercel@latest
 
       - name: Find preview deployment URL with READY state from vercel
         id: preview

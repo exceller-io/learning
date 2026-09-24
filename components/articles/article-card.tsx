@@ -1,14 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { Clock, User, FilePen } from "lucide-react";
+import { Clock, User } from "lucide-react";
 import type { SanityArticleListItem } from "@/lib/sanity-queries";
+import { RatingStars } from "@/components/shared/rating-stars";
+import type { RatingSummary } from "@/lib/ratings";
 
 interface ArticleCardProps {
   article: SanityArticleListItem;
+  rating?: RatingSummary;
 }
 
-export function ArticleCard({ article }: ArticleCardProps) {
+export function ArticleCard({ article, rating }: ArticleCardProps) {
   const authorName = article.author
     ? `${article.author.firstName} ${article.author.lastName}`.trim()
     : null;
@@ -65,6 +68,12 @@ export function ArticleCard({ article }: ArticleCardProps) {
           <p className="mb-4 line-clamp-3 flex-1 text-sm text-gray-500">
             {article.summary}
           </p>
+
+          {rating && (
+            <div className="mb-3">
+              <RatingStars rating={rating} />
+            </div>
+          )}
 
           <div className="flex items-center justify-between text-xs text-gray-400">
             <div className="flex items-center gap-3">

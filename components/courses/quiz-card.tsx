@@ -41,6 +41,10 @@ export function QuizCard({ quiz }: QuizCardProps) {
       body: JSON.stringify({ answers }),
     });
 
+    if (!res.ok) {
+      setLoading(false);
+      return;
+    }
     const data = await res.json();
     setResult(data);
     setLoading(false);

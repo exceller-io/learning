@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { CourseCard } from "@/components/courses/course-card";
 import { GraduationCap, Users, BookOpen, Star, ArrowRight, CheckCircle, FilePen } from "lucide-react";
 import { LatestArticles } from "@/components/articles/latest-articles";
+import { Testimonials } from "@/components/home/testimonials";
+import { getBatchRatings } from "@/lib/ratings";
 
 async function getFeaturedCourses() {
   return sanityClient.fetch<SanityCourseListItem[]>(featuredCoursesQuery);
@@ -25,6 +27,7 @@ async function getStats() {
 
 export default async function HomePage() {
   const [courses, stats] = await Promise.all([getFeaturedCourses(), getStats()]);
+  const courseRatings = await getBatchRatings("course", courses.map((c) => c._id));
 
   return (
     <div className="min-h-screen bg-white">
@@ -126,6 +129,7 @@ export default async function HomePage() {
                     author: { name: course.author ? `${course.author.firstName} ${course.author.lastName}`.trim() : null, image: null },
                     _count: { enrollments: 0, modules: course.moduleCount },
                   }}
+                  rating={courseRatings[course._id]}
                 />
               ))}
             </div>
@@ -162,6 +166,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Testimonials */}
+      <Testimonials />
 
       {/* CTA */}
       <section className="bg-indigo-600 py-16">
